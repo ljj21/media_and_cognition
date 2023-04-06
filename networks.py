@@ -67,13 +67,18 @@ class Classifier(nn.Module):
         # batchnorm
         # relu
         # dropout(p), where p is input parameter of dropout ratio
-        self.conv1 = nn.Sequential(nn.Conv2d(in_channels, 32, 5, stride=1, padding=2), bn2d(32), nn.ReLU())
-        self.conv2 = nn.Sequential(nn.Conv2d(32, 64, 5, stride=2, padding=2), bn2d(64), nn.ReLU())
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels, 32, 5, stride=1, padding=2), bn2d(32), nn.ReLU())
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(32, 64, 5, stride=2, padding=2), bn2d(64), nn.ReLU())
         self.pool1 = nn.MaxPool2d(2, stride=2)
-        self.conv3 = nn.Sequential(nn.Conv2d(64, 64, 3, stride=1, padding=1), bn2d(64), nn.ReLU())
-        self.conv4 = nn.Sequential(nn.Conv2d(64, 128, 3, stride=1, padding=1), bn2d(128), nn.ReLU())
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(64, 64, 3, stride=1, padding=1), bn2d(64), nn.ReLU())
+        self.conv4 = nn.Sequential(
+            nn.Conv2d(64, 128, 3, stride=1, padding=1), bn2d(128), nn.ReLU())
         self.pool2 = nn.MaxPool2d(2, stride=2)
-        self.conv5 = nn.Sequential(nn.Conv2d(128, 128, 3, stride=1, padding=1), bn2d(128), nn.ReLU(), nn.Dropout(dropout_prob))
+        self.conv5 = nn.Sequential(nn.Conv2d(128, 128, 3, stride=1, padding=1), bn2d(
+            128), nn.ReLU(), nn.Dropout(dropout_prob))
         # <<< TODO 2.1
 
         # >>> TODO 2.2: complete a sub-network with two linear layers by using nn.Sequential function
@@ -109,10 +114,10 @@ class Classifier(nn.Module):
         x1 = self.conv1(x0)
         x2 = self.conv2(x1)
         x3 = self.pool1(x2)
-        x4 = self.conv3(x3)
+        x4 = self.conv3(x3) + x3
         x5 = self.conv4(x4)
         x6 = self.pool2(x5)
-        x7 = self.conv5(x6)
+        x7 = self.conv5(x6) + x6
 
         # Step 3: use `Tensor.view()` to flatten the tensor to match the size of the input of the
         # fully connected layers.
@@ -157,7 +162,18 @@ class STN(nn.Module):
         # Suggested structure: 3 layers of down-sampling convolution (e.g. each layer reduces the feature map
         # size by half), double the number of channels in each layer, use BN and ReLU.
         self.localization_conv = nn.Sequential(
-            
+            nn.Conv2d(in_channels, 2 * in_channels, 5, stride=1, padding=2),
+            nn.BatchNorm2d(2 * in_channels),
+            nn.ReLU(),
+            nn.MaxPool2d(2, stride=2),
+            nn.Conv2d(2 * in_channels, 4 * in_channels, 3, stride=1, padding=1),
+            nn.BatchNorm2d(4 * in_channels),
+            nn.ReLU(),
+            nn.MaxPool2d(2, stride=2),
+            nn.Conv2d(4 * in_channels, 8 * in_channels, 3, stride=1, padding=1),
+            nn.BatchNorm2d(8 * in_channels),
+            nn.ReLU(),
+            nn.MaxPool2d(2, stride=2)
         )
 
         # Step 2: Build a fully connected network to predict the parameters of affine transformation from
@@ -165,7 +181,10 @@ class STN(nn.Module):
         # Hint: Combine linear layers and ReLU activation functions to build this network.
         # Suggested structure: 2 linear layers with one BN and ReLU.
         self.localization_fc = nn.Sequential(
-
+            nn.Linear(8 * in_channels * 16, 32),
+            nn.BatchNorm1d(32),
+            nn.ReLU(),
+            nn.Linear(32, 6)
         )
         # <<< TODO 3.1
 
@@ -173,7 +192,10 @@ class STN(nn.Module):
         # Hint: The STN should generate the identity transformation by default before training.
         # How to initialize the weight/bias of the last linear layer of the fully connected network to
         # achieve this goal?
-
+        self.localization_fc[3].weight.data.zero_()
+        self.localization_fc[3].bias.data.copy_(
+            torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float32)
+            )
         # <<< TODO 3.2
 
     def forward(self, x):
