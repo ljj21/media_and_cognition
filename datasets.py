@@ -38,15 +38,15 @@ def get_data_loader(data_root, mode, image_size, batch_size, num_workers=0, augm
     data_transforms = [
         transforms.Resize(image_size),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        
+        transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ]
 
     # You should insert some data augmentation techniques to `data_transforms` when `augment` is True
     # for the training dataset.
     # Consider what is an appropriate data augmentation technique for traffic sign classification.
     if mode == 'train' and augment:
-        pass
+        data_transforms.append(transforms.RandomResizedCrop(image_size, scale=(0.8,0.8)))
+        data_transforms.append(transforms.RandomRotation(10))
 
     # Else, the `data_transforms` should be left unchanged
     # <<< TODO 1.1
